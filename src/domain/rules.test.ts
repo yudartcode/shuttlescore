@@ -15,8 +15,8 @@ const many = (winner: Side, n: number): MatchEvent[] => Array.from({ length: n }
 /** Rally bergantian sampai skor x-x. */
 const tie = (n: number): MatchEvent[] => Array.from({ length: n }, () => [r('A'), r('B')]).flat()
 
-const singles: MatchConfig = { type: 'singles', firstServer: 'A' }
-const doubles: MatchConfig = { type: 'doubles', firstServer: 'A' }
+const singles: MatchConfig = { type: 'singles', firstServer: 'A', bestOf: 3 }
+const doubles: MatchConfig = { type: 'doubles', firstServer: 'A', bestOf: 3 }
 
 describe('isGameOver', () => {
   it.each([
@@ -64,8 +64,8 @@ describe('skor game', () => {
 
   it('match point terdeteksi', () => {
     const s = replay(singles, [...many('A', 21), ...many('A', 20)])
-    expect(isMatchPoint(s, 'A')).toBe(true)
-    expect(isMatchPoint(s, 'B')).toBe(false)
+    expect(isMatchPoint(s, 'A', 3)).toBe(true)
+    expect(isMatchPoint(s, 'B', 3)).toBe(false)
   })
 })
 
@@ -170,5 +170,27 @@ describe('undo (replay tanpa event terakhir)', () => {
     const undone = replay(singles, events.slice(0, -1))
     expect(undone.finished).toBe(false)
     expect(undone.current).toEqual({ a: 20, b: 0 })
+  })
+})
+
+describe('best of 1', () => {
+  const bo1: MatchConfig = { type: 'singles', firstServer: 'A', bestOf: 1 }
+
+  it('match selesai setelah satu game', () => {
+    const s = replay(bo1, [...tie(19), r('B'), r('B')])
+    expect(s.finished).toBe(true)
+    expect(s.winner).toBe('B')
+    expect(s.games).toEqual([{ a: 19, b: 21 }])
+  })
+
+  it('game point sekaligus match point', () => {
+    const s = replay(bo1, many('A', 20))
+    expect(isMatchPoint(s, 'A', 1)).toBe(true)
+  })
+
+  it('ganti sisi di poin 11 game satu-satunya', () => {
+    const s = replay(bo1, many('A', 11))
+    expect(s.sideSwitched).toBe(true)
+    expect(s.ends).toBe(true)
   })
 })

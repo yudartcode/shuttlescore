@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { GameScore, MatchEvent, MatchType, Side } from '../domain/rules'
+import type { BestOf, GameScore, MatchEvent, MatchType, Side } from '../domain/rules'
 
 export interface Player {
   id: number
@@ -20,6 +20,8 @@ export interface Match {
   teamA: Slot[]
   teamB: Slot[]
   firstServer: Side | null
+  /** Kosong pada match lama: dianggap best of 3. */
+  bestOf?: BestOf
   status: 'ongoing' | 'finished'
   winner: Side | null
   games: GameScore[]

@@ -14,8 +14,8 @@ beforeEach(async () => {
 
 describe('repo', () => {
   it('quick match: pilih servis, main sampai selesai, undo membuka lagi', async () => {
-    const id = await createMatch({ type: 'singles', quick: true, ...quickSlots('singles'), firstServer: null })
-    await setFirstServer(id, 'A')
+    const id = await createMatch({ type: 'singles', quick: true, ...quickSlots('singles'), firstServer: null, bestOf: 3 })
+    await setFirstServer(id, 'A', 3)
     await playPoints(id, 'A', 42)
     let m = (await db.matches.get(id))!
     expect(m.status).toBe('finished')
@@ -34,14 +34,14 @@ describe('repo', () => {
   })
 
   it('undo tanpa rally membatalkan pilihan servis', async () => {
-    const id = await createMatch({ type: 'doubles', quick: true, ...quickSlots('doubles'), firstServer: null })
-    await setFirstServer(id, 'B')
+    const id = await createMatch({ type: 'doubles', quick: true, ...quickSlots('doubles'), firstServer: null, bestOf: 3 })
+    await setFirstServer(id, 'B', 1)
     await undoEvent(id)
     expect((await db.matches.get(id))!.firstServer).toBeNull()
   })
 
   it('statistik hanya menghitung slot tertaut; hapus pemain menjaga nama', async () => {
-    const id = await createMatch({ type: 'doubles', quick: true, ...quickSlots('doubles'), firstServer: 'A' })
+    const id = await createMatch({ type: 'doubles', quick: true, ...quickSlots('doubles'), firstServer: 'A', bestOf: 3 })
     await playPoints(id, 'A', 42)
     let stats = computeStats(await db.matches.toArray(), await db.players.toArray())
     expect(stats.players).toHaveLength(0)

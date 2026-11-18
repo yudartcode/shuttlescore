@@ -1,9 +1,11 @@
-// Aturan skor badminton BWF (rally point 21, best of 3) sebagai fungsi murni.
+// Aturan skor badminton BWF (rally point 21, best of 1 atau 3) sebagai fungsi murni.
 // State pertandingan selalu diturunkan dari log event: state = replay(config, events).
 
 export type Side = 'A' | 'B'
 export type MatchType = 'singles' | 'doubles'
 export type Court = 'right' | 'left'
+/** Jumlah game maksimal: best of 1 atau best of 3. */
+export type BestOf = 1 | 3
 
 export type MatchEvent =
   | { kind: 'rally'; winner: Side }
@@ -13,6 +15,7 @@ export type MatchEvent =
 export interface MatchConfig {
   type: MatchType
   firstServer: Side
+  bestOf: BestOf
 }
 
 export interface GameScore {
@@ -47,7 +50,7 @@ export interface MatchState {
 
 export const POINTS_TO_WIN = 21
 export const POINT_CAP = 30
-export const GAMES_TO_WIN = 2
+export const gamesToWin = (bestOf: BestOf): number => Math.ceil(bestOf / 2)
 export const MID_GAME_SWITCH = 11
 
 const other = (s: Side): Side => (s === 'A' ? 'B' : 'A')
@@ -83,8 +86,9 @@ export function gameWinner(score: GameScore): Side | null {
   return score.a > score.b ? 'A' : 'B'
 }
 
-export function isMatchOver(gamesWon: { A: number; B: number }): boolean {
-  return gamesWon.A >= GAMES_TO_WIN || gamesWon.B >= GAMES_TO_WIN
+export function isMatchOver(gamesWon: { A: number; B: number }, bestOf: BestOf): boolean {
+  const need = gamesToWin(bestOf)
+  return gamesWon.A >= need || gamesWon.B >= need
 }
 
 /** Satu poin lagi untuk `side` akan menutup game. */
@@ -93,8 +97,8 @@ export function isGamePoint(score: GameScore, side: Side): boolean {
   return !isGameOver(score) && gameWinner(next) === side
 }
 
-export function isMatchPoint(state: MatchState, side: Side): boolean {
-  return !state.finished && isGamePoint(state.current, side) && state.gamesWon[side] === GAMES_TO_WIN - 1
+export function isMatchPoint(state: MatchState, side: Side, bestOf: BestOf): boolean {
+  return !state.finished && isGamePoint(state.current, side) && state.gamesWon[side] === gamesToWin(bestOf) - 1
 }
 
 /** Kotak servis: skor tim servis genap = kanan, ganjil = kiri. */
@@ -156,7 +160,7 @@ export function applyEvent(state: MatchState, event: MatchEvent, config: MatchCo
     s.games = [...state.games, { ...s.current }]
     s.gamesWon[gw] += 1
     s.gameJustEnded = true
-    if (isMatchOver(s.gamesWon)) {
+    if (isMatchOver(s.gamesWon, config.bestOf)) {
       s.finished = true
       s.winner = gw
       return s
@@ -172,7 +176,7 @@ export function applyEvent(state: MatchState, event: MatchEvent, config: MatchCo
   }
 
   // Game penentu: ganti sisi saat salah satu tim pertama kali mencapai 11.
-  const lastGame = s.gameIndex === GAMES_TO_WIN * 2 - 2
+  const lastGame = s.gameIndex === config.bestOf - 1
   if (lastGame && s.current[key(w)] === MID_GAME_SWITCH && s.current[key(other(w))] < MID_GAME_SWITCH) {
     s.ends = !s.ends
     s.sideSwitched = true

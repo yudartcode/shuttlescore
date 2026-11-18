@@ -1,8 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useNavigate } from 'react-router-dom'
 import { db } from '../db/db'
-import { createMatch, quickSlots } from '../db/repo'
+import { createMatch, deleteMatch, quickSlots } from '../db/repo'
 import type { MatchType } from '../domain/rules'
+import { lastBestOf } from '../lib/prefs'
 import { teamName } from '../lib/share'
 
 const LAST_QUICK = 'shuttle-score:last-quick'
@@ -27,8 +28,13 @@ export function Home() {
     } catch {
       // Penyimpanan diblokir; abaikan.
     }
-    const id = await createMatch({ type, quick: true, ...quickSlots(type), firstServer: null })
+    const id = await createMatch({ type, quick: true, ...quickSlots(type), firstServer: null, bestOf: lastBestOf() })
     navigate(`/match/${id}`)
+  }
+
+  const remove = async (id: number, label: string) => {
+    if (!confirm(`Hapus match "${label}"? Skor yang sudah dicatat akan hilang dan tidak bisa dikembalikan.`)) return
+    await deleteMatch(id)
   }
 
   return (
@@ -45,13 +51,20 @@ export function Home() {
             {ongoing.map((m) => {
               const cur = m.games[m.games.length - 1]
               return (
-                <li key={m.id}>
+                <li key={m.id} className="ongoing-row">
                   <Link className="card" to={`/match/${m.id}`}>
                     <span>
                       {teamName(m.teamA)} <span className="muted">vs</span> {teamName(m.teamB)}
                     </span>
                     <span className="score-pill">{cur ? `${cur.a}–${cur.b}` : 'Mulai'}</span>
                   </Link>
+                  <button
+                    className="btn danger delete-btn"
+                    aria-label={`Hapus match ${teamName(m.teamA)} vs ${teamName(m.teamB)}`}
+                    onClick={() => remove(m.id, `${teamName(m.teamA)} vs ${teamName(m.teamB)}`)}
+                  >
+                    🗑
+                  </button>
                 </li>
               )
             })}

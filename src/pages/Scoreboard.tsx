@@ -1,19 +1,23 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { BestOfPicker } from '../components/BestOfPicker'
 import { MatchSummary } from '../components/MatchSummary'
 import { db, type Match } from '../db/db'
 import { configOf, loadEvents, pushEvent, rematch, setFirstServer, undoEvent } from '../db/repo'
 import {
+  type BestOf,
   type MatchState,
   type Side,
   canSwap,
+  gamesToWin,
   isGamePoint,
   isMatchPoint,
   replay,
   serverPosition,
 } from '../domain/rules'
 import { useWakeLock } from '../hooks/useWakeLock'
+import { lastBestOf, rememberBestOf } from '../lib/prefs'
 import { teamName } from '../lib/share'
 
 export function Scoreboard() {
@@ -39,15 +43,21 @@ export function Scoreboard() {
 }
 
 function ChooseServer({ match }: { match: Match }) {
-  const pick = (s: Side) => setFirstServer(match.id, s)
+  const [bestOf, setBestOf] = useState<BestOf>(match.bestOf ?? lastBestOf())
+  const pick = (s: Side) => {
+    rememberBestOf(bestOf)
+    return setFirstServer(match.id, s, bestOf)
+  }
   return (
     <main className="page choose-server">
       <header className="topbar">
         <Link to="/" className="back" aria-label="Kembali">
           ←
         </Link>
-        <h1>Siapa servis pertama?</h1>
+        <h1>Mulai match</h1>
       </header>
+      <BestOfPicker value={bestOf} onChange={setBestOf} />
+      <h2>Siapa servis pertama?</h2>
       <div className="choose-grid">
         {(['A', 'B'] as const).map((s) => (
           <button key={s} className={`btn team-${s.toLowerCase()} huge`} onClick={() => pick(s)}>
@@ -104,6 +114,7 @@ function Board({ match, state, eventCount }: { match: Match; state: MatchState; 
   const swap = (side: Side) => run(() => pushEvent(match.id, { kind: 'swap', team: side }))
   const again = async () => navigate(`/match/${await rematch(match)}`, { replace: true })
 
+  const bestOf = match.bestOf ?? 3
   const sides: Side[] = state.ends ? ['B', 'A'] : ['A', 'B']
   const pos = serverPosition(state)
 
@@ -115,7 +126,10 @@ function Board({ match, state, eventCount }: { match: Match; state: MatchState; 
         </Link>
         <span className="board-title">
           {state.finished ? 'Selesai' : `Game ${state.gameIndex + 1}`}
-          <span className="muted"> · {match.type === 'singles' ? 'Tunggal' : 'Ganda'}</span>
+          <span className="muted">
+            {' '}
+            · {match.type === 'singles' ? 'Tunggal' : 'Ganda'} · BO{bestOf}
+          </span>
         </span>
         <button className="btn small" onClick={undo} aria-label="Batalkan poin terakhir">
           ↶ Undo
@@ -140,12 +154,12 @@ function Board({ match, state, eventCount }: { match: Match; state: MatchState; 
             const team = side === 'A' ? match.teamA : match.teamB
             const score = side === 'A' ? state.current.a : state.current.b
             const serving = state.server === side
-            const badge = isMatchPoint(state, side) ? 'MATCH POINT' : isGamePoint(state.current, side) ? 'GAME POINT' : ''
+            const badge = isMatchPoint(state, side, bestOf) ? 'MATCH POINT' : isGamePoint(state.current, side) ? 'GAME POINT' : ''
             return (
               <section key={side} className={`half team-${side.toLowerCase()} ${serving ? 'serving' : ''}`}>
                 <button className="tap" onClick={() => point(side)} aria-label={`Poin untuk ${teamName(team)}`}>
                   <span className="games-won" aria-label={`${state.gamesWon[side]} game`}>
-                    {Array.from({ length: 2 }, (_, i) => (
+                    {Array.from({ length: gamesToWin(bestOf) }, (_, i) => (
                       <i key={i} className={i < state.gamesWon[side] ? 'on' : ''} />
                     ))}
                   </span>

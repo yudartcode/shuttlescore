@@ -5,8 +5,8 @@
   --border: #2e333d;
   --text: #f2f4f7;
   --muted: #9aa3b2;
-  --a: #ffb000;
-  --a-bg: #2a2110;
+  --a: var(--primary);
+  --a-bg: #1f2610;
   --b: #3fb8ff;
   --b-bg: #10212e;
   --primary: #c8f04a;
@@ -281,6 +281,24 @@ input {
   border-radius: var(--radius);
   padding: 14px 16px;
   min-height: 56px;
+}
+
+.ongoing-row {
+  display: flex;
+  gap: 8px;
+}
+
+.ongoing-row .card {
+  flex: 1;
+  min-width: 0;
+}
+
+.delete-btn {
+  flex: none;
+  width: 56px;
+  min-height: 56px;
+  padding: 0;
+  font-size: 1.2rem;
 }
 
 .score-pill {

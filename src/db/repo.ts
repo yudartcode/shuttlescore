@@ -1,8 +1,8 @@
-import { allGames, replay, type MatchConfig, type MatchEvent, type MatchType, type Side } from '../domain/rules'
+import { allGames, replay, type BestOf, type MatchConfig, type MatchEvent, type MatchType, type Side } from '../domain/rules'
 import { db, type Match, type Slot } from './db'
 
 export function configOf(match: Match): MatchConfig | null {
-  return match.firstServer ? { type: match.type, firstServer: match.firstServer } : null
+  return match.firstServer ? { type: match.type, firstServer: match.firstServer, bestOf: match.bestOf ?? 3 } : null
 }
 
 export async function loadEvents(matchId: number): Promise<MatchEvent[]> {
@@ -31,6 +31,7 @@ export async function createMatch(input: {
   teamA: Slot[]
   teamB: Slot[]
   firstServer: Side | null
+  bestOf: BestOf
 }): Promise<number> {
   return db.matches.add({
     ...input,
@@ -50,8 +51,8 @@ export function quickSlots(type: MatchType): { teamA: Slot[]; teamB: Slot[] } {
   }
 }
 
-export async function setFirstServer(matchId: number, side: Side): Promise<void> {
-  await db.matches.update(matchId, { firstServer: side })
+export async function setFirstServer(matchId: number, side: Side, bestOf: BestOf): Promise<void> {
+  await db.matches.update(matchId, { firstServer: side, bestOf })
 }
 
 export async function pushEvent(matchId: number, event: MatchEvent): Promise<void> {
@@ -119,5 +120,6 @@ export async function rematch(match: Match): Promise<number> {
     teamA: match.teamA,
     teamB: match.teamB,
     firstServer: null,
+    bestOf: match.bestOf ?? 3,
   })
 }
